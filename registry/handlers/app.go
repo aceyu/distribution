@@ -85,6 +85,8 @@ type App struct {
 
 	// readOnly is true if the registry is in a read-only maintenance mode
 	readOnly bool
+
+	registry2 distribution.Namespace
 }
 
 // NewApp takes a configuration and returns a configured app, ready to serve
@@ -313,6 +315,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 
 	// configure as a pull through cache
 	if config.Proxy.RemoteURL != "" {
+		app.registry2 = app.registry
 		app.registry, err = proxy.NewRegistryPullThroughCache(ctx, app.registry, app.driver, config.Proxy)
 		if err != nil {
 			panic(err.Error())
@@ -676,6 +679,9 @@ func (app *App) dispatcher(dispatch dispatchFunc) http.Handler {
 				return
 			}
 			repository, err := app.registry.Repository(context, nameRef)
+			if app.registry2 != nil && strings.HasPrefix(nameRef.Name(), "fbank/") {
+				repository, err = app.registry2.Repository(context, nameRef)
+			}
 
 			if err != nil {
 				dcontext.GetLogger(context).Errorf("error resolving repository: %v", err)
